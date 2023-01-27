@@ -4,13 +4,15 @@ import java.beans.Statement;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.springframework.stereotype.Repository;
 
 import com.spring.common.JDBCUtil;
 
 @Repository("boardDAO") // Spring Framework 에서 자동으로 객체가 생성되어서 RAM 로드
-public class BoardDAO {
+public class BoardDAO implements BoardService {
 	// DAO : Data Access Object -
 	// DataBase 에 CRUD하는 객체 : Select, Insert, Update, Delete
 
@@ -34,6 +36,7 @@ public class BoardDAO {
 	// getBoardList() : 각각의 레코드를 DTO(1개), ArrayLIst에 DTO객체를 담아서 리턴
 
 	// 3-1. 글 등록처리 메소드: insertBoard()
+	@Override
 	public void insertBoard(BoardDTO dto) {
 		System.out.println("==> JDBC로 insertBoard() 기능처리 - 시작");
 		// Connection 객체를 사용해서 PreparedStatement 객체 활성화
@@ -59,6 +62,7 @@ public class BoardDAO {
 	}
 
 	// 3-2. 글 수정처리 메소드: updateBoard()
+	@Override
 	public void updateBoard(BoardDTO dto) {
 		System.out.println("==> JDBC로 updateBoard() 기능처리 - 시작");
 		try {
@@ -82,6 +86,7 @@ public class BoardDAO {
 	}
 
 	// 3-3. 글 제거처리 메소드: deleteBoard()
+	@Override
 	public void deleteBoard(BoardDTO dto) {
 		System.out.println("==> JDBC로 deleteBoard() 기능처리 - 시작");
 		try {
@@ -102,8 +107,9 @@ public class BoardDAO {
 	}
 
 	// 3-2. 글 조회처리 메소드: getBoard() : 레코드 1개를 DB에서 select 해서 DTO객체에 담아서 리턴
+	@Override
 	public BoardDTO getBoard(BoardDTO dto) {
-		System.out.println("==> JDBC로 getBoard() 기능처리");
+		System.out.println("==> JDBC로 getBoard() 기능처리 - 시작");
 
 		// 리턴으로 돌려줄 변수 선언 : try 블락 밖에서 선언
 		BoardDTO board = null;
@@ -116,17 +122,68 @@ public class BoardDAO {
 
 			// DB를 select 한 결과를 rs에 저장
 			rs = pstmt.executeQuery();
+			
+			//rs에 담긴 값을 DTO에 저장해서 리턴으로 돌려줌
+			if(rs.next()) { //rs의 값이 존재한다면, rs의 값을 DTO에 담아서 리턴
+				board.setSeq(rs.getInt("SEQ"));
+				board.setTitle(rs.getString("TITLE"));
+				board.setWriter(rs.getString("WRITER"));
+				board.setContent(rs.getString("CONTENT"));
+				board.setRegDate(rs.getDate("REGDATE"));
+				board.setCnt(rs.getInt("CNT"));
+			}else {
+				System.out.println("레코드의 결과가 없습니다.");
+			}
+			System.out.println("==> JDBC로 getBoard() 기능처리 - 완료");
 
 		} catch (Exception e) {
 			e.printStackTrace();
+			System.out.println("==> JDBC로 getBoard() 기능처리 - 실패");
 		} finally {
-			JDBCUtil.close(pstmt, conn);
+			JDBCUtil.close(pstmt, conn, rs);
 		}
 		return board;
 	}
 
 	// 3-3. 글 목록조회 처리 메소드: getBoardList()
+	@Override
 	public List<BoardDTO> getBoardList(BoardDTO dto) {
-		System.out.println("==> JDBC로 getBoardList() 기능처리");
+		System.out.println("==> JDBC로 getBoardList() 기능처리 - 시작");
+		//리턴 돌려줄 변수 선언 : List <= 인터페이스
+			//ArrayList, Vector, LinkedList <== List 인터페이스를 구현한 클래스
+				//ArrayList : 싱글 쓰레드 환경
+				//Vector : 멀티 쓰레드 환경
+				//LinkedList : 자주 수정, 삭제 시 성능이 빠르게 처리
+		List<BoardDTO> boardList=new ArrayList<BoardDTO>();
+		BoardDTO board=null;
+		try {
+			conn=JDBCUtil.getConnection();
+			pstmt=conn.prepareStatement(BOARD_LIST);
+			rs=pstmt.executeQuery();
+			if(rs.next()) {
+				do {
+					//rs에서 가져온 1개의 레코드르 board(DTO)
+					board.setSeq(rs.getInt("SEQ"));
+					board.setTitle(rs.getString("TITLE"));
+					board.setWriter(rs.getString("WRITER"));
+					board.setContent(rs.getString("CONTENT"));
+					board.setRegDate(rs.getDate("REGDATE"));
+					board.setCnt(rs.getInt("CNT"));
+					
+					//boardList : ARrauList에 add()메소드를 사용해서 board(DTO)를 저장
+					boardList.add(board);
+				}while(rs.next());
+			}else {
+				System.out.println("테이블에 레코드가 비어 있습니다.");
+			}
+			System.out.println("==> JDBC로 getBoardList() 기능처리 - 완료");
+		}catch(Exception e) {
+			e.printStackTrace();
+			System.out.println("==> JDBC로 getBoardList() 기능처리 - 실패");
+		}finally {
+			JDBCUtil.close(pstmt, conn, rs);
+		}
+		
+		return boardList;
 	}
 }
